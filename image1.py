@@ -89,6 +89,11 @@ class image_converter:
         return np.array([cx, cy])
 
 
+    def detect_orange(self, image):
+        mask = cv2.inRange(image, (50, 100, 110), (90, 185, 220))
+        return mask
+
+
     # Calculate the conversion from pixel to meter
     def pixel2meter(self,image):
         # Obtain the centre of each coloured blob
@@ -107,15 +112,18 @@ class image_converter:
 
         blue = a * self.detect_blue(image)
         b = (center- blue)
-        print("distance from yellow to blue:", b)
+
+        #print("distance from yellow to blue:", b)
 
         green = a * self.detect_green(image)
         g = (center - green)
-        print("distance from yellow to green:", g)
+
+        #print("distance from yellow to green:", g)
 
         red = a * self.detect_red(image)
         r = (center - red)
-        print("distance from yellow to red:", r)
+
+        #print("distance from yellow to red:", r)
 
         return np.array([b[0],b[1], g[0], g[1], r[0], r[1]])
 
@@ -130,7 +138,7 @@ class image_converter:
 
         # Uncomment if you want to save the image
         #cv2.imwrite('image_copy.png', cv_image)
-        im1=cv2.imshow('window1', self.cv_image1)
+        #im1=cv2.imshow('window1', self.cv_image1)
 
         cv2.waitKey(1)
 
