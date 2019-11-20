@@ -22,10 +22,18 @@ class image_converter:
 
         self.euler_pub = rospy.Publisher("/euler", Float64MultiArray, queue_size = 10)
 
+        self.target_pub_x = rospy.Publisher("/target_x", Float64, queue_size = 10)
+        self.target_pub_y = rospy.Publisher("/target_y", Float64, queue_size = 10)
+        self.target_pub_z = rospy.Publisher("/target_z", Float64, queue_size = 10)
+
         # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
         self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
         # subscribe to the angles found in camera1
         self.camera1_angles = rospy.Subscriber("/camera1_positions",Float64MultiArray,self.callback3)
+
+
+        self.image_sub1 = rospy.Subscriber("/chamfer",Float64MultiArray,self.target)
+
         # initialize the bridge between openCV and ROS
         self.bridge = CvBridge()
 
@@ -94,9 +102,19 @@ class image_converter:
 
     def detect_orange(self, image):
         mask = cv2.inRange(image, (50, 100, 110), (90, 185, 220))
+        #cv2.imshow('window2',mask)
         return mask
 
+    def detect_target(self, image, template):
+        w, h = template.shape[::-1]
 
+      	res = cv2.matchTemplate(image, template, 1)
+        #cv2.imshow('Windows', res)
+    	min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+
+        #print([min_loc[0] + w/2, min_loc[1] + h/2])
+    	return np.array([min_loc[0] + w/2, max_loc[1]+h/2])
 
 
     # Calculate the conversion from pixel to meter
@@ -128,7 +146,7 @@ class image_converter:
         r = (center - red)
 
         #print("distance from yellow to red:", y2r)
-        return np.array([b[0],b[1], g[0], g[1], r[0], r[1]])
+        return np.array([b[0],b[1], g[0], g[1], r[0], r[1], center[0],center[1]])
 
     def r_x(self,theta):
         return np.array([[1,0,0],
@@ -194,6 +212,7 @@ class image_converter:
         #im2=cv2.imshow('window2', self.cv_image2)
         cv2.waitKey(1)
 
+
         a = self.detect_joint_angles(self.cv_image2)
         self.joints = Float64MultiArray()
         self.joints.data = a
@@ -216,7 +235,7 @@ class image_converter:
         except CvBridgeError as e:
             print(e)
 
-
+        self.center3d = np.array([self.joints.data[6], camera1_positions[6], max(self.joints.data[7], camera1_positions[7])])
         yellow3d = np.array([0, 0, 0])
         blue3d = np.array( [0,0,2] )
         green3d = np.array( [self.joints.data[2], camera1_positions[2], max(self.joints.data[3], camera1_positions[3])] )
@@ -237,6 +256,47 @@ class image_converter:
             self.euler_pub.publish(self.eu)
         except CvBridgeError as e:
             print(e)
+
+
+    def target(self,data):
+        try:
+            z_y = data.data
+            #print(camera1_positions)
+            #print("Camera 2:", self.joints.data)
+        except CvBridgeError as e:
+            print(e)
+
+        mask = self.detect_orange(self.cv_image2)
+        i = cv2.inRange(cv2.imread('image_crop.png', 1), (200, 200, 200), (255, 255, 255))
+
+        #cv2.imshow('window2', i)
+        z_x = self.detect_target(mask, i)
+
+        orange3d = np.array([z_x[0], z_y[0], max(z_x[1], z_y[1])])
+
+        a = self.pixel2meter(self.cv_image2)
+        # Obtain the centre of each coloured blob
+        #center = a * self.center3d
+
+        orange3d = (orange3d * a)
+        target = (orange3d - self.center3d)
+        #print("c3d:", self.center3d)
+        #print("o3d:", orange3d)
+        #print(target)
+        #target = np.array([orange3d[0] - self.center3d[0], orange3d[1] - self.center3d[1], self.center3d[2] - orange3d[2]])
+        #target = np.abs(target)
+        #print(orange3d)
+        try:
+            self.target_pub_x.publish(target[0] )
+            self.target_pub_y.publish(target[1] )
+            self.target_pub_z.publish(np.abs(self.center3d[2] - orange3d[2]) )
+        except CvBridgeError as e:
+            print(e)
+
+
+
+
+
 
 
 # call the class

@@ -20,6 +20,9 @@ class image_converter:
         self.image_pub1 = rospy.Publisher("image_topic1",Image, queue_size = 1)
         # publish camera1 joint angles
         self.joints_angles1 = rospy.Publisher("/camera1_positions", Float64MultiArray, queue_size = 10)
+
+        self.chamfer_pub = rospy.Publisher("/chamfer", Float64MultiArray, queue_size = 10)
+
         # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
         self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
         # initialize the bridge between openCV and ROS
@@ -91,7 +94,15 @@ class image_converter:
 
     def detect_orange(self, image):
         mask = cv2.inRange(image, (50, 100, 110), (90, 185, 220))
+        #cv2.imshow('window2',mask)
         return mask
+
+    def detect_target(self, image, template):
+        w, h = template.shape[::-1]
+      	res = cv2.matchTemplate(image, template, 0)
+    	min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        #print([min_loc[0], min_loc[1]])
+    	return np.array([min_loc[0] + w/2, max_loc[1]+h/2])
 
 
     # Calculate the conversion from pixel to meter
@@ -125,7 +136,7 @@ class image_converter:
 
         #print("distance from yellow to red:", r)
 
-        return np.array([b[0],b[1], g[0], g[1], r[0], r[1]])
+        return np.array([b[0],b[1], g[0], g[1], r[0], r[1], center[0],center[1]])
 
 
     # Recieve data from camera 1, process it, and publish
@@ -146,10 +157,20 @@ class image_converter:
         self.joints = Float64MultiArray()
         self.joints.data = a
 
+        mask = self.detect_orange(self.cv_image1)
+        i = cv2.inRange(cv2.imread('image_crop.png', 1), (200, 200, 200), (255, 255, 255))
+
+        #cv2.imshow('window2', i)
+        t = self.detect_target(mask, i )
+        self.target = Float64MultiArray()
+        self.target.data = t
+
+
         # Publish the results
         try:
             self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
             self.joints_angles1.publish(self.joints)
+            self.chamfer_pub.publish(self.target)
         except CvBridgeError as e:
             print(e)
 
