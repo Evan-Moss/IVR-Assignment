@@ -351,7 +351,8 @@ class image_converter:
             print(e)
 
         self.target = self.find_target(self.cv_image2, z_y)
-
+        #Uncomment for control
+        '''
         q_d = self.control(self.cv_image2)
         #print(q_d)
         #q_d = np.mod(q_d, np.pi/2) * np.sign(q_d)
@@ -380,9 +381,10 @@ class image_converter:
 
         fk_z = Float64()
         fk_z.data = fk[2]
-
+        '''
         try:
-
+            #Uncomment for control
+            '''
             self.fk_x_pub.publish(fk_x)
             self.fk_y_pub.publish(fk_y)
             self.fk_z_pub.publish(fk_z)
@@ -391,7 +393,7 @@ class image_converter:
             self.joint2_pub.publish(self.joint2)
             self.joint3_pub.publish(self.joint3)
             self.joint4_pub.publish(self.joint4)
-
+            '''
             self.target_pub_x.publish(self.target[0] )
             self.target_pub_y.publish(self.target[1] )
             self.target_pub_z.publish(np.abs(self.target[2]))
