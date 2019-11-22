@@ -99,7 +99,7 @@ class image_converter:
 
     def detect_target(self, image, template):
         w, h = template.shape[::-1]
-      	res = cv2.matchTemplate(image, template, 0)
+      	res = cv2.matchTemplate(image, template, 1)
     	min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         #print([min_loc[0], min_loc[1]])
     	return np.array([min_loc[0] + w/2, max_loc[1]+h/2])
@@ -111,7 +111,7 @@ class image_converter:
         circle1Pos = self.detect_yellow(image)
         circle2Pos = self.detect_blue(image)
         # find the distance between two circles
-        dist = np.sum((circle1Pos - circle2Pos)**2)
+        dist = np.sum((circle2Pos - circle1Pos)**2)
         return 2 / np.sqrt(dist)
 
 
@@ -132,7 +132,7 @@ class image_converter:
         #print("distance from yellow to green:", g)
 
         red = a * self.detect_red(image)
-        r = (center - red)
+        r = center -red
 
         #print("distance from yellow to red:", r)
 
@@ -148,7 +148,7 @@ class image_converter:
             print(e)
 
         # Uncomment if you want to save the image
-        #cv2.imwrite('image_copy.png', cv_image)
+        #cv2.imwrite('image_copy.png', self.cv_image1)
         #im1=cv2.imshow('window1', self.cv_image1)
 
         cv2.waitKey(1)
@@ -156,6 +156,8 @@ class image_converter:
         a = self.detect_joint_angles(self.cv_image1)
         self.joints = Float64MultiArray()
         self.joints.data = a
+
+
 
         mask = self.detect_orange(self.cv_image1)
         i = cv2.inRange(cv2.imread('image_crop.png', 1), (200, 200, 200), (255, 255, 255))
